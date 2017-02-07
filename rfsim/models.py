@@ -21,9 +21,9 @@ class Lineup(object):
     ###
     # return the total gain of the lineup
     #
-    def gain(self):
+    def gain(self, freq):
         total_gain = 0
         for dev in self._lineup:
-            total_gain = total_gain + dev.gain()
+            total_gain = total_gain + dev.gain(freq)
 
         return total_gain
