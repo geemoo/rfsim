@@ -14,7 +14,9 @@ class RFDevice(object):
 
         # use None for a default so unset values can be caught and corrected
         self._gain = None
+        self._insertion_loss = None
         self._noisefigure = None
+
 
     ###
     # create an interpolation object, based off a single value, or a list of values
@@ -67,15 +69,59 @@ class RFDevice(object):
     ###
     # return the gain of the object
     #
-    # @freq - the frequency to test at
+    # @param freq - the frequency to test at
     # @returns - the interpolated gain value at the frequency specified
     #
     def gain(self, freq):
         return self._gain(freq).item()
 
 
+    ###
+    # returns the gain as a linear value instead of a dB value
+    #
+    # @param freq - the frequency to test at
+    # @returns - the interpolated gain value at the frequency specified
+    #
+    def linear_gain(self, freq):
+        gain = self.gain(freq)
+
+        return pow(10, gain / 10.0)
+
+
+    ###
+    # set the insertion loss of the device
+    # 
+    # @param iloss - a single scalar value for flat loss curves, or a list of (freq,loss) tuples
+    #
+    def set_insertion_loss(self, iloss):
+        
+        # interpolate the lists
+        self._insertion_loss = self.create_curve(iloss)
+
+
+    ###
+    # return the insertion loss of the object
+    #
+    # @param freq - the frequency to test at
+    # @returns - the interpolated loss value at the frequency specified
+    #
+    def insertion_loss(self, freq):
+        return self._insertion_loss(freq).item()
+
+
+    ###
+    # returns the noise figure of the device
+    # - for devices that don't have gain, the noise figure is the amount of insertion loss
+    #
+    # @freq - the frequency to test at
+    # @returns - the interpolated noisefigure value at the frequency specified
+    #
+    def noisefigure(self, freq):
+        return self.insertion_loss(freq)
+
+
 ###
-# attenuator class
+# Amplifier class
 #
 class Amplifier(RFDevice):
 
@@ -87,6 +133,9 @@ class Amplifier(RFDevice):
         # call the constructor
         super(Amplifier, self).__init__()
     
+        # amplifiers aren't lossy
+        self.set_insertion_loss(0)
+
         if not (gain is None):
             self.set_gain(gain)
 
@@ -105,7 +154,8 @@ class Amplifier(RFDevice):
 
 
     ###
-    # return the noisefigure of the object
+    # returns the noise figure of the device
+    # - for devices that have gain, the noise figure curve is specified when the device is created
     #
     # @freq - the frequency to test at
     # @returns - the interpolated noisefigure value at the frequency specified
@@ -122,14 +172,17 @@ class Attenuator(RFDevice):
     ###
     # constructor
     #
-    def __init__(self, attens = None):
+    def __init__(self, atten = None):
 
         # call the constructor
         super(Attenuator, self).__init__()
 
+        # attenuators don't have gain
+        self.set_gain(0)
+
         # set attens if provided
-        if not (attens is None):
-            self.set_attenuation(attens)
+        if not (atten is None):
+            self.set_attenuation(atten)
 
 
     ###
@@ -138,35 +191,14 @@ class Attenuator(RFDevice):
     # @param atten - a single attenuation for flat atten curves, or a list of (freq, atten) tuples
     #
     def set_attenuation(self, atten):
-        # if atten is a scalar, negate the value
-        if not isinstance(atten, list):
-            gains = -atten
-        # if atten is a list, negate all the values
-        else:
-            gains = [ ]
-            for (f, a) in atten:
-                gains.append((f, -a))
-            
-        # now create the curve
-        self.set_gain(gains)
+        self.set_insertion_loss(atten)
 
 
     ###
     # return the attenuation at a frequency
     #
     def attenuation(self, freq):
-        # return the gain, negated
-        return -(self._gain(freq).item())
-
-
-    ###
-    # noise figure of an attenuator is just the attenuation value
-    #
-    # @freq - the frequency to test at
-    # @returns - the interpolated noisefigure value at the frequency specified
-    #
-    def noisefigure(self, freq):
-        return self.attenuation(freq).item()
+        return self.insertion_loss(freq)
 
 
 ###
