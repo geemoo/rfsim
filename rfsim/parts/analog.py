@@ -3,10 +3,13 @@ from rfsim.parts.generic import Switch
 
 class HMC1118(Switch):
 
+    ###
+    # constructor
+    #
     def __init__(self):
         
         # create an SPDT switch
-        super(Switch, self).__init__(1, 2)
+        super(HMC1118, self).__init__(1, 2)
 
         # create the insertion loss curve, each list item is a (freq, loss) point
         loss_curve = self.create_curve([ (0e9, 0.5), (8e9, 0.5), (9e9, 0.6), (10e9, 0.7), (11e9, 1.2), (12e9, 1.4), (13e9, 1.3), (14e9, 1.4) ])
