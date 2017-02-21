@@ -223,15 +223,112 @@ class Switch(Attenuator):
     ###
     # constructor
     #
-    def __init__(self, mode = None):
+    # @param inports - number of ports going into the switch, 1 or greater
+    # @param outports - number of ports going out of the switch, 1 or greater
+    # @param path_used - the path that is considered inline
+    #
+    def __init__(self, inports, outports, path_used = (1, 1)):
 
         # call the constructor
         super(Switch, self).__init__()
 
-        # record switch mode (in, out, isolation)
-        if mode is None:
-            self._mode = 'in'
-        else:
-            self._mode = mode
+        # record port counts
+        if inports < 1:
+            raise Error("inports must be 1 or greater")
+        self._inports = inports
+        if outports < 1:
+            raise Error("outports must be 1 or greater")
+        self._outports = outports
 
+        # initialize the attribute dictionaries
+        self._insertion_loss = { }
+
+        # record path used
+        self.set_used_path(path_used[0], path_used[1])
+    
+        # select path 1, 1 by default
+        self.select_path(1, 1)
+
+
+    ###
+    # set the path that is considered to be inline in the lineup
+    #
+    # @param inport - the port on the input side
+    # @param outport - the port on the output side
+    #
+    def set_used_path(self, inport, outport):
+        # make sure inport and outport are valid
+        if (inport < 1) or (inport > self._inports):
+            raise Error("invalid inport value: %s" % inport)
+        if (outport < 1) or (outport > self._outports):
+            raise Error("invalid outport value: %s" % outport)
+
+        # record the path
+        self._used_path = (inport, outport)
+
+    
+    ###
+    # return the path currently used
+    #
+    # @returns - (inport, outport) as a tuple
+    def used_path(self):
+        return self._used_path
+
+
+    ###
+    # set the currently selected path in the switch from inports to outports
+    #
+    # @param inport - the port on the input side
+    # @param outport - the port on the output side
+    #
+    def select_path(self, inport, outport):
+        # make sure inport and outport are valid
+        if (inport < 1) or (inport > self._inports):
+            raise Error("invalid inport value: %s" % inport)
+        if (outport < 1) or (outport > self._outports):
+            raise Error("invalid outport value: %s" % outport)
+
+        # record the path
+        self._selected_path = (inport, outport)
+
+
+    ###
+    # set a insertion loss curve for the specified path
+    # 
+    # @param selected - what (in,out) path must be selected to use this curve
+    # @param paths - list of (in,out) paths to use this curve for
+    # @param curve - the loss curve to use
+    #
+    def set_path_insertion_loss(self, selected, paths, curve):
+        # initialize the dictionary if it hasn't been set
+        if not (selected in self._insertion_loss):
+            self._insertion_loss[selected] = { }
+
+        # set the curve for each path
+        for p in paths:
+            self._insertion_loss[selected][p] = curve
+
+
+    ###
+    # return the gain of the switch
+    #
+    # @param freq - the freq to return the gain at
+    # @returns - the gain at the frequency
+    #
+    def gain(self, freq):
+        return 0
+
+
+    ###
+    # return the insertion loss of the switch
+    #
+    # @param freq - the freq to return the gain at
+    # @returns - the insertion loss at the frequency
+    #
+    def insertion_loss(self, freq):
+        # get the curve
+        curve = self._insertion_loss[self._selected_path][self._used_path]
+
+        # return the value
+        return curve(freq)
 

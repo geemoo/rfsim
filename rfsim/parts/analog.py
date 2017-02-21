@@ -1,49 +1,26 @@
-from parts.generic import (Switch)
+from rfsim.parts.generic import Switch
 
 
 class HMC1118(Switch):
 
-    ###
-    # constructor for hmc1118 class
-    #
-    # @param mode - the mode to configure the switch in, can be one of 'in', 'out', or 'isolation'
-    #
-    def __init__(self, mode = None):
-        super(HMC1118, self).__init__(mode)
+    def __init__(self):
+        
+        # create an SPDT switch
+        super(Switch, self).__init__(1, 2)
+
+        # create the insertion loss curve, each list item is a (freq, loss) point
+        loss_curve = self.create_curve([ (0e9, 0.5), (8e9, 0.5), (9e9, 0.6), (10e9, 0.7), (11e9, 1.2), (12e9, 1.4), (13e9, 1.3), (14e9, 1.4) ])
+
+        # set that curve for the selected paths
+        self.set_path_insertion_loss((1, 1), [ (1, 1) ], loss_curve)
+        self.set_path_insertion_loss((1, 2), [ (1, 2) ], loss_curve)
     
-        # init curves for all modes
-        self.init_modes()
+        # create the isolation curve
+        loss_curve = self.create_curve([ (0e9, 80), (1e9, 57), (2e9, 52), (3e9, 50), (4e9, 47), (5e9, 46), (6e9, 47), (7e9, 51), (8e9, 57), (9e9, 40), (10e9, 36), (11e9, 30), (12e9, 28), (13e9, 23), (14e9, 21) ])
 
-        # setup curves for current mode
-        self.set_mode(mode)
-    
+        # set that curve for isolation paths
+        self.set_path_insertion_loss((1, 1), [ (1, 2) ], loss_curve)
+        self.set_path_insertion_loss((1, 2), [ (1, 1) ], loss_curve)
 
-    ###
-    # setup the characteristic curves for the mode specified
-    #
-    # @param mode - the mode to configure the switch in, can be one of 'in', 'out', or 'isolation'
-    #
-    def setup_mode(self, mode):
-        self._gain = self._gain_modes[mode]
-
-
-    ###
-    # initialize all our curves for each mode
-    #
-    def init_modes(self):
-        # init dictionary
-        self._gain_modes = { }
-
-        # initialize in mode
-        freqlist = range(0, int(14e9), int(1e9))
-        attenlist = [ 0.4, 0.5, 0.52, 0.54, 0.56, 0.58, 0.60, 0.6, 0.6, 0.65, 0.7, 1.2, 1.4, 1.3, 1.4 ] 
-        self._gain_modes['in'] = scipy.interp1d(freqlist, attenlist)
-
-        # initialize out mode
-        attenlist = [ 78, 56, 52, 49, 48, 47, 48, 52, 57, 42, 36, 31, 27, 24, 22 ]
-        self._gain_modes['out'] = scipy.interp1d(freqlist, attenlist)
-
-        # initialize isolation mode
-        attenlist = [ 81, 67, 60, 55, 50, 45, 43, 39, 36, 32, 29, 25, 23, 20, 19 ]
-        self._gain_modes['isolation'] = scipy.interp1d(freqlist, attenlist)
-
+        # select path RFC->RF1 by default
+        self.select_path(1, 1)
